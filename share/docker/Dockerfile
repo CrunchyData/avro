@@ -17,7 +17,7 @@
 # Dockerfile for installing the necessary dependencies for building Avro.
 # See BUILD.md.
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 WORKDIR /root
 
 ENV APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=isolemnlysweariamuptonogood \
@@ -55,9 +55,10 @@ RUN apt-get -qqy update \
                                                  libssl-dev \
                                                  make \
                                                  mypy \
+                                                 openjdk-8-jdk \
                                                  openjdk-11-jdk \
                                                  openjdk-17-jdk \
-                                                 openjdk-8-jdk \
+                                                 openjdk-21-jdk \
                                                  perl \
                                                  python3 \
                                                  python3-pip \
@@ -91,7 +92,7 @@ RUN apt-get -qqy install --no-install-recommends libzstd-dev \
 
 # Install a maven release  -------------------------------------------
 # Inspired from https://github.com/apache/accumulo-docker/blob/bbb9892e165d40fb35fa19f38929effc5d0c709b/Dockerfile#L30
-ENV MAVEN_VERSION 3.8.6
+ENV MAVEN_VERSION 3.9.6
 ENV APACHE_DIST_URLS \
   https://www.apache.org/dyn/closer.cgi?action=download&filename= \
   # if the version is outdated (or we're grabbing the .asc file), we might have to pull from the dist/archive :/
@@ -131,7 +132,8 @@ RUN curl -sSL https://deb.nodesource.com/setup_14.x \
  && npm cache clean --force
 
 # Install PHP-snappy and PHP-zstd
-ENV PHP7_VERSION=7.4
+ENV PHP8_VERSION=8.1
+RUN mkdir -p "/etc/php/${PHP8_VERSION}/cli/conf.d"
 RUN mkdir tmp && cd tmp \
  && git clone --recursive --depth=1 https://github.com/kjdev/php-ext-zstd.git \
  && cd php-ext-zstd \
@@ -139,7 +141,7 @@ RUN mkdir tmp && cd tmp \
  && ./configure \
  && make \
  && make install \
- && echo "extension=zstd.so" > /etc/php/${PHP7_VERSION}/cli/conf.d/10-zstd.ini \
+ && echo "extension=zstd.so" > "/etc/php/${PHP8_VERSION}/cli/conf.d/10-zstd.ini" \
  && cd .. && rm -rf php-ext-zstd \
  && git clone --recursive --depth=1 https://github.com/kjdev/php-ext-snappy.git \
  && cd php-ext-snappy \
@@ -147,7 +149,7 @@ RUN mkdir tmp && cd tmp \
  && ./configure \
  && make \
  && make install \
- && echo "extension=snappy.so" > /etc/php/${PHP7_VERSION}/cli/conf.d/10-snappy.ini \
+ && echo "extension=snappy.so" > "/etc/php/${PHP8_VERSION}/cli/conf.d/10-snappy.ini" \
  && cd .. && rm -rf php-ext-snappy \
  && php -m \
  && apt-get -qqy clean
@@ -177,9 +179,9 @@ RUN curl -sSL https://cpanmin.us \
  && rm -rf .cpanm
 
 # Install Python3
-ENV PATH="${PATH}:/opt/pypy3.8/bin:/opt/pypy3.9/bin:/opt/pypy3.10/bin" \
+ENV PATH="${PATH}:/opt/pypy3.9/bin:/opt/pypy3.10/bin" \
     PIP_NO_CACHE_DIR=off
-    
+
 # https://docs.docker.com/engine/reference/builder/#automatic-platform-args-in-the-global-scope
 ARG BUILDARCH
 RUN case "${BUILDARCH:?}" in \
@@ -187,12 +189,10 @@ RUN case "${BUILDARCH:?}" in \
       *) pypyarch=linux64;; \
     esac \
  && cd /opt \
- && for url in https://downloads.python.org/pypy/pypy3.8-v7.3.11-"$pypyarch".tar.bz2 \
-               https://downloads.python.org/pypy/pypy3.9-v7.3.12-"$pypyarch".tar.bz2 \
+ && for url in https://downloads.python.org/pypy/pypy3.9-v7.3.12-"$pypyarch".tar.bz2 \
                https://downloads.python.org/pypy/pypy3.10-v7.3.12-"$pypyarch".tar.bz2; \
     do curl -fsSL "$url" | tar -xvjpf -; \
     done \
- && ln -s pypy3.8* pypy3.8 \
  && ln -s pypy3.9* pypy3.9 \
  && ln -s pypy3.10* pypy3.10
 
@@ -213,10 +213,11 @@ RUN gem install bundler --no-document && \
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.70.0
 
-# Note: This "ubertool" container has two JDK versions:
+# Note: This "ubertool" container has 4 JDK versions:
 # - OpenJDK 8
 # - OpenJDK 11
 # - OpenJDK 17
+# - OpenJDK 21
 # - The root build.sh script switches between the versions according to
 #   the JAVA environment variable.
 
@@ -232,7 +233,7 @@ RUN cd /opt ; \
     
 ENV PATH $PATH:/opt/dotnet
 
-# Since we want the JDK8 as a default, we have to re-prepend it to the PATH.
-RUN update-java-alternatives  -s "java-1.8.0*"
+# Since we want the JDK21 as a default, we have to re-prepend it to the PATH.
+RUN update-java-alternatives  -s "java-1.21.*"
 
 CMD ["/bin/bash", "-i"]

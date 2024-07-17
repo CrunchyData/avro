@@ -16,8 +16,8 @@
 // under the License.
 
 use crate::{
-    schema::{Name, SchemaKind},
-    types::ValueKind,
+    schema::{Name, Schema, SchemaKind},
+    types::{Value, ValueKind},
 };
 use std::{error::Error as _, fmt};
 
@@ -55,8 +55,12 @@ pub enum Error {
     Validation,
 
     /// Describes errors happened while validating Avro data.
-    #[error("Value does not match schema: Reason: {0}")]
-    ValidationWithReason(String),
+    #[error("Value {value:?} does not match schema {schema:?}: Reason: {reason}")]
+    ValidationWithReason {
+        value: Value,
+        schema: Schema,
+        reason: String,
+    },
 
     #[error("Unable to allocate {desired} bytes (maximum allowed: {maximum})")]
     MemoryAllocation { desired: usize, maximum: usize },
@@ -88,6 +92,12 @@ pub enum Error {
 
     #[error("Failed to convert &str to UUID")]
     ConvertStrToUuid(#[source] uuid::Error),
+
+    #[error("Failed to convert Fixed bytes to UUID. It must be exactly 16 bytes, got {0}")]
+    ConvertFixedToUuid(usize),
+
+    #[error("Failed to convert Fixed bytes to UUID")]
+    ConvertSliceToUuid(#[source] uuid::Error),
 
     #[error("Map key is not a string; key type is {0:?}")]
     MapKeyType(ValueKind),
@@ -364,6 +374,9 @@ pub enum Error {
     #[error("Fixed schema has no `size`")]
     GetFixedSizeField,
 
+    #[error("Fixed schema's default value length ({0}) does not match its size ({1})")]
+    FixedDefaultLenSizeMismatch(usize, u64),
+
     #[error("Failed to compress with flate")]
     DeflateCompress(#[source] std::io::Error),
 
@@ -497,7 +510,7 @@ pub enum CompatibilityError {
     #[error("Incompatible schema types! The {schema_type} should have been {expected_type:?}")]
     TypeExpected {
         schema_type: String,
-        expected_type: &'static [SchemaKind],
+        expected_type: Vec<SchemaKind>,
     },
 
     #[error("Incompatible schemata! Field '{0}' in reader schema does not match the type in the writer schema")]

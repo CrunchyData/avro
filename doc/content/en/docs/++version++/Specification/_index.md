@@ -314,8 +314,8 @@ Primitive types are encoded in binary as follows:
 |64 | 80 01|
 |...|...|
 
-* a _float_ is written as 4 bytes. The float is converted into a 32-bit integer using a method equivalent to Java's [floatToIntBits](https://docs.oracle.com/javase/8/docs/api/java/lang/Float.html#floatToIntBits-float-) and then encoded in little-endian format.
-* a _double_ is written as 8 bytes. The double is converted into a 64-bit integer using a method equivalent to Java's [doubleToLongBits](https://docs.oracle.com/javase/8/docs/api/java/lang/Double.html#doubleToLongBits-double-) and then encoded in little-endian format.
+* a _float_ is written as 4 bytes. The float is converted into a 32-bit integer using a method equivalent to Java's [floatToRawIntBits](https://docs.oracle.com/javase/8/docs/api/java/lang/Float.html#floatToRawIntBits-float-) and then encoded in little-endian format.
+* a _double_ is written as 8 bytes. The double is converted into a 64-bit integer using a method equivalent to Java's [doubleToRawLongBits](https://docs.oracle.com/javase/8/docs/api/java/lang/Double.html#doubleToRawLongBits-double-) and then encoded in little-endian format.
 * _bytes_ are encoded as a long followed by that many bytes of data.
 * a _string_ is encoded as a long followed by that many bytes of UTF-8 encoded character data.
 For example, the three-character string "foo" would be encoded as the long value 3 (encoded as hex 06) followed by the UTF-8 encoding of 'f', 'o', and 'o' (the hex bytes 66 6f 6f):
@@ -825,14 +825,24 @@ _Currently only available in Java and Rust_.
 Here, as scale property is stored in value itself it needs more bytes than preceding `decimal` type, but it allows more flexibility.
 
 ### UUID
+
 The `uuid` logical type represents a random generated universally unique identifier (UUID).
 
-A `uuid` logical type annotates an Avro `string`. The string has to conform with [RFC-4122](https://www.ietf.org/rfc/rfc4122.txt)
+A `uuid` logical type annotates an Avro `string` or `fixed` of length 16. Both the string and `fixed` byte layout have to conform with [RFC-4122](https://www.ietf.org/rfc/rfc4122.txt).
 
-The following schema represents a uuid:
+The following schemas represent a uuid:
+
 ```json
 {
   "type": "string",
+  "logicalType": "uuid"
+}
+```
+
+```json
+{
+  "type": "fixed",
+  "size": "16",
   "logicalType": "uuid"
 }
 ```
@@ -878,7 +888,7 @@ The `local-timestamp-{millis,micros,nanos}` logical type represents a timestamp 
 - `local-timestamp-micros`: logical type annotates an Avro `long`, where the long stores the number of microseconds, from 1 January 1970 00:00:00.000000.
 - `local-timestamp-nanos`: logical type annotates an Avro `long`, where the long stores the number of nanoseconds, from 1 January 1970 00:00:00.000000000.
 
-Example: Given an event at noon local time (12:00) on January 1, 2000, in Helsinki where the local time was two hours east of UTC (UTC+2). The timestamp is converted to Avro long 946684800000 (milliseconds) and then written.
+Example: Given an event at noon local time (12:00) on January 1, 2000, in Helsinki where the local time was two hours east of UTC (UTC+2). The timestamp is converted to Avro long 946728000000 (milliseconds) and then written.
 
 ### Duration
 The `duration` logical type represents an amount of time defined by a number of months, days and milliseconds. This is not equivalent to a number of milliseconds, because, depending on the moment in time from which the duration is measured, the number of days in the month and number of milliseconds in a day may differ. Other standard periods such as years, quarters, hours and minutes can be expressed through these basic periods.
