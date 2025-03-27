@@ -568,6 +568,93 @@ int avro_file_reader_fp(FILE *fp, const char *path, int should_close,
 	return 0;
 }
 
+int
+avro_file_reader_json_schema(const char *file_path, const char **json_schema)
+{
+	FILE *file = fopen(file_path, "rb");
+	if (!file) {
+		avro_set_error("Error opening file: %s",
+			       strerror(errno));
+		return errno;
+	}
+
+	avro_reader_t reader = avro_reader_file(file);
+
+	int rval;
+
+	char		magic[4] = {0};
+
+	/* read magic footer */
+	check(rval, avro_read(reader, magic, sizeof(magic)));
+
+	if (magic[0] != 'O' || magic[1] != 'b' || magic[2] != 'j'
+		|| magic[3] != 1)
+	{
+		avro_reader_free(reader);
+		avro_set_error("Incorrect Avro container file magic number");
+		return 1;
+	}
+
+	/* each value is bytes */
+	avro_schema_t meta_values_schema = avro_schema_bytes();
+
+	/* metadata is map */
+	avro_schema_t meta_schema = avro_schema_map(meta_values_schema);
+
+	/* prepare avro interface for the schema */
+	avro_value_iface_t *meta_iface = avro_generic_class_from_schema(meta_schema);
+
+	if (meta_iface == NULL)
+	{
+		avro_reader_free(reader);
+		avro_set_error("Cannot create metadata interface");
+		return 1;
+	}
+
+	/* read avro metadata */
+	avro_value_t meta;
+
+	if (avro_generic_value_new(meta_iface, &meta) != 0)
+	{
+		avro_reader_free(reader);
+		avro_set_error("Cannot create metadata value");
+		return 1;
+	}
+
+	if (avro_value_read(reader, &meta) != 0)
+	{
+		avro_reader_free(reader);
+		avro_set_error("Cannot read file header");
+		return 1;
+	}
+
+	/* read "avro.schema" from the metadata */
+	avro_value_t schema_bytes;
+
+	if (avro_value_get_by_name(&meta, "avro.schema", &schema_bytes, NULL) != 0)
+	{
+		avro_reader_free(reader);
+		avro_set_error("File header doesn't contain a schema");
+		return 1;
+	}
+
+	const void *p = NULL;
+	size_t		len = 0;
+
+	avro_value_get_bytes(&schema_bytes, &p, &len);
+
+	char *schema = avro_malloc(len + 1);
+
+	memcpy((void *) schema, p, len);
+	schema[len] = '\0';
+
+	*json_schema = schema;
+
+	avro_reader_free(reader);
+
+	return 0;
+}
+
 int avro_file_reader(const char *path, avro_file_reader_t * reader)
 {
 	FILE *fp;
