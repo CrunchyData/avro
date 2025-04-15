@@ -118,6 +118,8 @@ int avro_file_reader(const char *path, avro_file_reader_t * reader);
 int avro_file_reader_fp(FILE *fp, const char *path, int should_close,
 			avro_file_reader_t * reader);
 
+int avro_file_reader_json_schema(const char *file_path, const char **json_schema);
+
 avro_schema_t
 avro_file_reader_get_writer_schema(avro_file_reader_t reader);
 
