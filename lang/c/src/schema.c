@@ -56,7 +56,7 @@ static int is_avro_id(const char *name)
 		}
 		for (i = 0; i < len; i++) {
 			if (!(isalpha(name[i])
-			      || name[i] == '_' || (i && isdigit(name[i])))) {
+			      || name[i] == '_' || name[i] == '.' || (i && isdigit(name[i])))) {
 				return 0;
 			}
 		}
